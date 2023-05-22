@@ -24,6 +24,5 @@ g++ main.cpp -o main
 
 ### Ejecutar
 ./main
-
-Se generan 3 archivos txt que son Encabezado, InformacionBinaria y Trazas. Este algoritmo consta de 4 librerias (Aca si quieres pones mas info del algoritmo pero creo que lo mas explicito es en el informe del proyecto cuando se entregue). 
+ 
 
