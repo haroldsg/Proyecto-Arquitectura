@@ -1,9 +1,16 @@
 #include <iostream>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <iostream>
 #include <fstream>
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <cstring>
 #include <cstdio>
+#include <vector>
+
 
 #include "LIB/convertir.h"
 #include "LIB/funciones.h"
@@ -11,176 +18,122 @@
 #include "LIB/trazaCabecera.h"
 
 using namespace std;
-const int DEFAULT_TRACE = 0;
-const int DEFAULT_SAMPLE = 0;
-// 3200 Encabezado + 400 Encabezado binario
-const int DEFAULT_SKIP = 3600;  
-
+// Definir la estructura que contiene las coordenadas
+struct Coordenadas {
+    float x;
+    float y;
+    float z;
+};
 int main() {
-    // Abrir el archivo SEG-Y en modo binario
-    ifstream archivo,trazaInfoSGY;
+    int fd;
+    struct stat sb;
+    char *mem;
     ofstream headerInfo("Encabezado.txt");
     ofstream binarioInfo("InformacionBinaria.txt");
-    ofstream headerInfoExt("InfoEncabezadoExt.txt");
-    ofstream trazaInfoSgy("TrazaInfo.csv");
-    ofstream datosTraza;
-
-    char *cabecera = new char[3200];
-    char *datoBinario = new char[400];
-    short int numHeaderExt;
-    archivo.open("SGY/archivo.sgy", ios::binary);
-    if (!archivo) {
+    
+    // Abrir el archivo SEG-Y en modo de solo lectura
+    fd = open("SGY/DataSet1.sgy", O_RDONLY);
+    if (fd == -1) {
         cerr << "No se pudo abrir el archivo." << endl;
+        return 1;
+    }
+    
+    // Obtener información sobre el archivo
+    if (fstat(fd, &sb) == -1) {
+        cerr << "No se pudo obtener información del archivo." << endl;
+        close(fd);
+        return 1;
+    }
+    
+    // Mapear el archivo en memoria
+    //cout<<sb.st_size<<endl;
+    mem = (char*) mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (mem == MAP_FAILED) {
+        cerr << "No se pudo mapear el archivo en memoria." << endl;
+        close(fd);
         return 1;
     }
 
     // Leer los primeros 3200 bytes (la cabecera completa)
-    archivo.read(cabecera, 3200);
-
+    char cabecera[3200];
+    memcpy(cabecera, mem, 3200);
+    
     // Convertir la cabecera a texto ASCII
     convertASCII(cabecera,3200);
     write_text_header(headerInfo,cabecera);
+    
+    // Leer los siguientes 400 bytes (el encabezado binario)
+    char encabezado_binario[400];
+    memcpy(encabezado_binario, mem + 3200, 400);
 
-    //liberar memoria
-    delete cabecera;
-/*____________________________________________________________*/
-
-    // Leer los 400 bytes cabecera binaria
-	archivo.read(datoBinario, 400);
-
-	//crear un objeto tipo Binaryheader
+    //crear un objeto tipo Binaryheader
 	BinaryHeader cabeceraBinaria;
-	cabeceraBinaria.store(datoBinario);
+	cabeceraBinaria.store(encabezado_binario);
 	//escribir al archivo
 	cabeceraBinaria.write(binarioInfo);
-	//liberar memoria
-	delete datoBinario;
 
-/*____________________________________________________________*/
 
-    //leer informacion extendida del header
-    numHeaderExt = cabeceraBinaria.get_exthead();
-    if (numHeaderExt  == -1)
-    {
-    	cout << "\nnúmero variable de registros de encabezado de archivo de texto extendido";
-    	headerInfoExt.close();
-    	exit(-7);
-    }
-    else if (numHeaderExt  == 0)
-    {
-        cout <<"\nEste SGY esta sin encabezado de archivo de texto extendido\n";
-        headerInfoExt.close();
-        remove("InfoEncabezadoExt.txt");
-    }
-    else
-    {
-        //creo el archivo extendido txt
-        
-    	while(numHeaderExt--)
-    	{
-	        char* extHeader = new char[3200];
-	        
-
-	        //leer el encabezado de archivo extendido
-	        archivo.read(extHeader,3200);
-            //convertir 
-	        convertASCII(extHeader,3200);
-            //pasar info al archivo txt
-	        write_text_header(headerInfoExt,cabecera);
-	        // liberar memoria
-	        delete extHeader;    	    	
-    	}
-    }
-    //calculamos el numero de trazas
-    long long pos = archivo.tellg();
-    archivo.seekg(0, ios::end);
-    long long end = archivo.tellg();
-    archivo.seekg(pos, ios::beg);
     unsigned short int numSamples = cabeceraBinaria.get_num_of_samples();
-    long long nTraza = (end - pos)/(numSamples*4 + 240);
+    short int nTraza = cabeceraBinaria.get_num_of_trace();
 
+    //cout<<"Nro Trazas: "<<nTraza<<endl;
+     // Leer las trazas de datos sísmicos
     //tipo archivo traza
     TraceHeader traza;
-    char *trazaInfo;
+    char trazaInfo[240];
     //unsigned short int numSamples;
+    int spl = 3600;
+    //ofstream trazaInfoSgy("TrazaInfo.csv");
+    // Definir la estructura que contiene las coordenadas
 
+
+
+// Crear un vector para almacenar las coordenadas de todas las trazas
+    vector<Coordenadas> coordenadasTodasTrazas;
+
+// Agregar las coordenadas de cada traza al vector
     for(int i = 0; i < nTraza; i++)
     {
-        //guardar memoria para la informacion de la traza
-	    trazaInfo = new char[240];
-	    archivo.read(trazaInfo, 240);
+        // Guardar memoria para la información de la traza
+        char* trazaInfo = new char[240];
+        memcpy(trazaInfo, mem+spl, 240);
+        spl += 240;
 
-        
-	    traza.store(trazaInfo);
-	    //escribir en el archivo
-	    traza.write(trazaInfoSgy);
-        //liberar memoria
-        delete trazaInfo;
+        // Leer las coordenadas de la traza
+        Coordenadas coordenadas;
+        memcpy(&coordenadas.x, trazaInfo+72, sizeof(float));
+        memcpy(&coordenadas.y, trazaInfo+76, sizeof(float));
+        memcpy(&coordenadas.z, trazaInfo+80, sizeof(float));
 
+        // Agregar las coordenadas al vector
+        coordenadasTodasTrazas.push_back(coordenadas);
+
+        // Liberar memoria
+        delete[] trazaInfo;
+
+        // Actualizar spl para la siguiente traza
         numSamples = traza.get_numsampl();
-        archivo.seekg(numSamples*4, ios::cur);
+        spl += numSamples*4;
     }
-    trazaInfoSgy.close();
-////////////////////////////trazas///////////////////////////////////////
-    int trazasNum = DEFAULT_TRACE;
-	int muestrasNum = DEFAULT_SAMPLE;
-    int skip = DEFAULT_SKIP;
-
-	//se abre archivo que contiene info de las trazas csv
-    trazaInfoSGY.open("TrazaInfo.csv");
-    datosTraza.open("Trazas.txt");
-
-    if (!trazaInfoSGY || !datosTraza ) {
-        cerr << "No se pudo abrir un archivo." << endl;
+    // Recorrer el vector y mostrar las coordenadas de cada elemento
+    for (int i = 0; i < coordenadasTodasTrazas.size(); i++) {
+        cout<<i+1<<endl;
+        cout <<"Coordenada X: " << coordenadasTodasTrazas[i].x<<endl;
+        cout << "Coordenada Y: " << coordenadasTodasTrazas[i].y <<endl;
+        cout<< "Coordenada Z: " << coordenadasTodasTrazas[i].z <<endl<<endl;
+    }
+    
+    // Liberar la memoria mapeada
+    
+    cout<<"tamaño del archivo en bytes: "<<sb.st_size<<endl;
+    
+    if (munmap(mem, sb.st_size) == -1) {
+        cerr << "No se pudo liberar la memoria mapeada." << endl;
+        close(fd);
         return 1;
     }
-
-	archivo.seekg(skip, ios::beg);
-
-	// Mueva el puntero del archivo al encabezado de rastreo requerido
-	for(int i = 0; i < trazasNum; i++)
-	{
-		unsigned int numMuestras = csv_read(trazaInfoSGY, i);
-		//colocará el puntero justo antes del siguiente encabezado de seguimiento
-		int pos = 240 + numMuestras*4;
-		archivo.seekg(pos, ios::cur);
-	}
-    // cuenta el número de muestra
-	unsigned int numMuestras = csv_read(trazaInfoSGY, trazasNum);
-	int muestrasF = numMuestras - muestrasNum;
-
-	float ieeeMuestra;
-	uint32_t ibmMuestra;
-
-	// omitirá el encabezado de seguimiento y colocará el puntero en la muestra para leer
-	archivo.seekg(240 + muestrasNum*4, ios::cur);
-
-	//escribir las siguientes muestras restantes
-    for(int i = 0; i < muestrasF; i++)
-	{
-		//reservar memoria para las muestras
-		char* valorTraza;
-		valorTraza = new char[4];
-		archivo.read(valorTraza, 4);
-
-		//convertir de ibm a ieee
-		ibmMuestra = *reinterpret_cast<uint32_t*>(valorTraza);
-		ieeeMuestra = toIeee(ibmMuestra);
-		//pasar al archivo
-		if (i == 2499)
-			datosTraza << ieeeMuestra << "\n";
-		else
-		datosTraza << ieeeMuestra << "\n";
-		//liberar
-		delete valorTraza;
-	}
-
-    // Cerrar el archivos
-    archivo.close();
-    headerInfo.close();
-    binarioInfo.close();
-    trazaInfoSGY.close();
-    datosTraza.close();
-    remove("TrazaInfo.csv");
+    
+    // Cerrar el archivo
+    close(fd);
     return 0;
 }
