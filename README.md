@@ -1,4 +1,4 @@
-# Proyecto Arquitectura-Primera entrega
+# Proyecto Arquitectura
 ## Trabajo hecho por: 
 >Harold Franco 
 >CI: 28.330.946
