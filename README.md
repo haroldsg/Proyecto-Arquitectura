@@ -34,9 +34,11 @@ g++ mainMenu.cpp -o mainMenu
 
 ### Ejecutar
 Ejecutar el "main.cpp"
+
 ./main
 
 Ejecutar el "mainMenu.cpp"
+
 ./mainMenu
  
 
