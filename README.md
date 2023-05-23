@@ -17,7 +17,7 @@ El encabezado de un archivo SGY contiene información sobre el tamaño de muestr
 
 ## Programa
 
-Se hizo un algoritmo capaz de leer los datos de un dataset SGY, Tenemos 2 carpetas una llamada LIB donde se encuentran las librerías que nos ayudan a leer el dataset y otra llamada SGY donde se coloca el dataset SGY se coloco 3 dataset con su nombre apropiados “DataSet1” es el caso pequeño, “DataSet2” es el caso intermedio y “DataSet3” el caso grande. Colocamos 2 main donde se puede compilar el programa, el “mainMenu.cpp” tiene un menú donde puede escoger entre 3 datasets están nombrados como caso pequeño, intermedio y grande, se leen esos 3 datasets como se menciono anteriormente con sus nombres apropiados y el “main.cpp” se encarga de leer directamente el data set con su nombre apropiado “Dataset1”.
+Se hizo un algoritmo capaz de leer los datos de un dataset SGY, Tenemos 2 carpetas una llamada LIB donde se encuentran las librerías que nos ayudan a leer el dataset y otra llamada SGY donde se coloca el dataset SGY se coloco 3 dataset con su nombre apropiados “DataSet1” es el caso pequeño, “DataSet2” es el caso intermedio y “DataSet3” el caso grande. Colocamos 2 main donde se puede compilar el programa, el “mainMenu.cpp” tiene un menú donde puede escoger entre 3 datasets están nombrados como caso pequeño, intermedio y grande, se leen esos 3 datasets como se menciono anteriormente con sus nombres apropiados y el “main.cpp” se encarga de leer directamente el data set con su nombre apropiado “DataSet1”.
 
 
 ### Compilar
